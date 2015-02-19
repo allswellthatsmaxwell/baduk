@@ -1,3 +1,4 @@
+#lang racket
 (define board-size 19)
 (define liberty-directions (list 'N 'S 'E 'W))
 (define all-directions (append liberty-directions (list 'NE 'NW 'SE 'SW)))
@@ -12,8 +13,8 @@
 
 (define (count-liberties gridpt)
   (length (filter (lambda (dir) (not (bordered-in-dir-by-color gridpt
-                                                     dir
-                                                     (opposite-color (gridpt-color gridpt)))))
+                                                          dir
+                                                          (opposite-color (gridpt-color gridpt)))))
                   liberty-directions)))
 
 (define (fully-surrounded gridpt)
@@ -51,3 +52,15 @@
          [col (car (cdr neighbor-coords))]
          [gridpt-neighbor (get-gridpt-by-coords row col)])
     (and (not (gridpt-is-empty? gridpt)) (equal? color (gridpt-color gridpt-neighbor)))))
+
+(define (place-stone row col color)
+  (let ([targetpt (get-gridpt-by-coords row col)])
+    (cond
+      [(not (gridpt-is-empty? targetpt)) (error (string-append "there is already a stone at " (~a targetpt)))]
+      [else (set-gridpt-color! targetpt color)
+            (set-gridpt-is-empty?! targetpt #f)])))
+
+(define (remove-stone row col)
+  (let ([targetpt (get-gridpt-by-coords row col)])
+    (set-gridpt-color! targetpt null)
+    (set-gridpt-is-empty?! targetpt #t)))
