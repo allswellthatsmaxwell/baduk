@@ -1,6 +1,7 @@
+
 #lang racket/gui
 (require racket/gui/base)
-(require "baduk-base.rkt")
+(require "./Documents/cse/baduk/baduk-base.rkt")
 
 (define frame-size 1000)
 (define margin-size 101)
@@ -19,14 +20,24 @@
                    [horiz-margin (- margin-size padding)]
                    [vert-margin (- margin-size padding)]))
 
+(define current-player-color "black")
 (define go-canvas%
   (class canvas%
     (define/override (on-event ev)
       (when (send ev button-down? 'left)
         (let* ([x (send ev get-x)]
                [y (send ev get-y)]
-               [center-x (- x (/ square-size 2))]
-               [center-y (- y (/ square-size 2))])
+               [gridpt-coords (snap-to-gridpt x y)]
+               [gridpt-x (car gridpt-coords)]
+               [gridpt-y (cdr gridpt-coords)]
+               [center-x (- gridpt-x square-size)]
+               [center-y (- gridpt-y square-size)]
+               [row-col (coords-screen>board x y)]
+               [row (car row-col)]
+               [col (cdr row-col)])
+          (place-stone board (- row 2) (- col 2) current-player-color)
+          (send dc set-brush current-player-color 'solid)
+          (set! current-player-color (switch-turn-color current-player-color))
           (send dc draw-ellipse center-x center-y square-size square-size))))
     (super-new)))
 
@@ -43,19 +54,27 @@
                                                 (draw-grid (- x square-size) (- y square-size))]))])
                          (draw-grid panel-size panel-size)))]))
 
-(define pixel-diagonal (sequence->list (in-range 0 panel-size square-size)))
+(define pixel-diagonal (sequence->list (in-range 0 (+ panel-size square-size) square-size)))
 
-(define (coords--board->screen pixel-diagonal row col)
+(define (coords-board>screen row col)
   (cons (list-ref pixel-diagonal row) (list-ref pixel-diagonal col)))
 
-(define (coords--screen->board pixel-diagonal x y)
-  (letrec ([find-gridpt (lambda (pixel-diagonal px)
+(define (coords-screen>board x y)
+  (letrec ([find-gridpt (lambda (pixel-diagonal px i)
                           (cond
-                            [(< px (car pixel-diagonal))
-                             (car pixel-diagonal)]
-                            [else
-                             (find-gridpt (cdr pixel-diagonal) px)]))])
-    (cons (find-gridpt x) (find-gridpt y))))
+                            [(null? pixel-diagonal) i]
+                            [(< px (car pixel-diagonal)) i]
+                            [else  (find-gridpt (cdr pixel-diagonal) px (+ i 1))]))])
+    (cons (find-gridpt pixel-diagonal x 0) (find-gridpt pixel-diagonal y 0))))
+
+(define (snap-to-gridpt x y)
+  (let* ([click-coords (coords-screen>board x y)]
+         [x-board (car click-coords)]
+         [y-board (cdr click-coords)]
+         [gridpt-coords (coords-board>screen x-board y-board)]
+         [gridpt-x (car gridpt-coords)]
+         [gridpt-y (cdr gridpt-coords)])
+        (cons gridpt-x gridpt-y)))
 
 (define dc (send canvas get-dc))
 
