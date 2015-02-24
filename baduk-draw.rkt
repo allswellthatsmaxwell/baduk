@@ -1,13 +1,13 @@
-
 #lang racket/gui
 (require racket/gui/base)
-(require "./Documents/cse/baduk/baduk-base.rkt")
+(require "baduk-base.rkt")
 
-(define frame-size 1000)
-(define margin-size 101)
-(define panel-size (- frame-size (* margin-size 2)))
-(define padding board-size) ; margin around edges of go board
-(define square-size (/ (- panel-size padding) board-size))
+(define square-size 42)
+(define padding (/ square-size 2)) ; around board
+(define panel-size (+ (* board-size square-size)
+                      (* padding 2)))
+(define frame-size (+ panel-size square-size))
+(define far-edge-px (- (- panel-size padding) square-size))
 
 (define frame (new frame%
                    [label "board"]
@@ -17,10 +17,11 @@
 (define panel (new panel%
                    [parent frame]
                    [style (list 'border)]
-                   [horiz-margin (- margin-size padding)]
-                   [vert-margin (- margin-size padding)]))
+                   [horiz-margin square-size]
+                   [vert-margin square-size]))
 
 (define current-player-color "black")
+
 (define go-canvas%
   (class canvas%
     (define/override (on-event ev)
@@ -35,10 +36,14 @@
                [row-col (coords-screen>board x y)]
                [row (car row-col)]
                [col (cdr row-col)])
-          (place-stone board (- row 2) (- col 2) current-player-color)
+          (print row) (print " ") (print col) (print " ") (displayln "")
+          (place-stone board (- row 1) (- col 1) current-player-color)
           (send dc set-brush current-player-color 'solid)
           (set! current-player-color (switch-turn-color current-player-color))
-          (send dc draw-ellipse center-x center-y square-size square-size))))
+          (send dc draw-ellipse center-x center-y square-size square-size)
+          (let ([captures (collect-single-captures board (- row 1) (- col 1))]) ; minus 1'd while solving neighbor problem
+            (remove-capture-list captures)
+            (for-each erase-stone captures))))) ; erases 1 too far in SE direction
     (super-new)))
 
 (define canvas (new go-canvas%
@@ -47,12 +52,31 @@
                      (lambda (canvas dc)
                        (letrec ([draw-grid (lambda (x y)
                                              (cond
-                                               [(< y 0) '()]
+                                               [(< y padding) '()]
                                                [else
-                                                (send dc draw-line padding y panel-size y)
-                                                (send dc draw-line x padding x panel-size)
+                                                (send dc draw-line padding y far-edge-px y)
+                                                (send dc draw-line x padding x far-edge-px)
                                                 (draw-grid (- x square-size) (- y square-size))]))])
-                         (draw-grid panel-size panel-size)))]))
+                         (draw-grid far-edge-px far-edge-px)))]))
+
+(define (draw-board board)
+  (for-each
+   (lambda (row-list)
+     (for-each
+      (lambda (gridpt)
+        (let* ([row (+ (gridpt-row gridpt) 1)]
+               [col (+ (gridpt-col gridpt) 1)]
+               [coords (coords-board>screen row col)]
+               [x (car coords)]
+               [y (cdr coords)])
+          (erase-stone gridpt)
+          (cond [(gridpt-has-stone? gridpt)
+                 (send dc set-brush (gridpt-color gridpt) 'solid)
+                 (send dc set-pen "black" 1 'solid)
+                 (send dc draw-ellipse x y square-size square-size)])))
+      row-list))
+   board))
+
 
 (define pixel-diagonal (sequence->list (in-range 0 (+ panel-size square-size) square-size)))
 
@@ -75,6 +99,20 @@
          [gridpt-x (car gridpt-coords)]
          [gridpt-y (cdr gridpt-coords)])
         (cons gridpt-x gridpt-y)))
+
+(define (erase-stone gridpt)
+  (cond [(null? gridpt) (raise "gridpoint does not exist")]
+        [else (let* ([coords (coords-board>screen (- (gridpt-row gridpt) 1) (- (gridpt-col gridpt) 1))]
+                     [x (car coords)]
+                     [y (cdr coords)]
+                     [half-square (/ square-size 2)])
+                (send dc set-pen "white" 1 'solid)
+                (send dc set-brush "white" 'solid)
+                (send dc draw-rectangle x y square-size square-size)
+                (send dc set-brush "black" 'solid)
+                (send dc set-pen "black" 1 'solid)
+                (send dc draw-line (+ x half-square) (+ y square-size) (+ x half-square) y)
+                (send dc draw-line (+ x square-size) (+ y half-square) x (+ y half-square)))]))
 
 (define dc (send canvas get-dc))
 
