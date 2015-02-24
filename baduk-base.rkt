@@ -13,23 +13,9 @@
         [(equal? dir "E") (cons row (+ col 1))]
         [(equal? dir "W") (cons row (- col 1))]))
 
-; returns the number of liberties gridpt has.
-(define (count-libos gridpt)
-  (letrec ([count-libies (lambda (liberty-dirs)
-                         (cond [(null? liberty-dirs) 0]
-                               [else
-                                (+ (count-libies (cdr liberty-dirs))
-                                   (if (bordered-in-dir-by-color? gridpt
-                                                                  (car liberty-dirs)
-                                                                  (opposite-color (gridpt-color gridpt)))
-                                       0
-                                       1))]))])
-    (count-libies liberty-directions)))
-
 (define (count-liberties gridpt)
-  (length (filter (lambda (dir) (not (bordered-in-dir-by-color? gridpt
-                                                          dir
-                                                          (opposite-color (gridpt-color gridpt)))))
+  (length (filter (lambda (dir) (or (empty-in-dir? gridpt dir) 
+                               (friend-in-dir? gridpt dir)))
                   liberty-directions)))
 
 ; returns true if gridpt has zero liberties, false otherwise.
@@ -58,26 +44,43 @@
   (cond
     [(equal? color "white") "black"]
     [(equal? color "black") "white"]
-    [(null? color) null]
     [else (error "color is not black or white")]))
 
-; returns the gridpt with coordinates row, col
+; returns the gridpt with coordinates row, col. If no such point, returns null.
 (define (get-gridpt-by-coords board row col)
-  (with-handlers ([exn:fail? (lambda (exn) '())])
+  (with-handlers ([exn:fail? (lambda (exn)
+                               (display row) (display " ") (displayln col)
+                               '())])
     (list-ref (list-ref board row) col)))
 
 ; returns true if the gridpt one space in direction dir from
 ; passed gridpt is equal to color, false otherwise
 (define (bordered-in-dir-by-color? gridpt dir color)
-  (cond [(null? gridpt) #f]
-        [else
-         (let* ([neighbor-coords (get-adjacent-coords (- (gridpt-row gridpt) 1) (- (gridpt-col gridpt) 1) dir)] ; changed to -1 for neighbors problem
-                [row (car neighbor-coords)]
-                [col (cdr neighbor-coords)]
-                [neighbor (get-gridpt-by-coords board row col)])
-           (and (not (null? neighbor))
-                (and (gridpt-has-stone? neighbor) ; changed from gridpt to neighbor
-                     (equal? color (gridpt-color neighbor)))))]))
+  (let ([neighbor (get-neighbor-of-gridpt gridpt dir)])
+    ((and (not (null? neighbor))
+          (and (gridpt-has-stone? neighbor)
+               (equal? color (gridpt-color neighbor)))))))
+
+(define (get-neighbor-of-gridpt gridpt dir)
+  (let* ([neighbor-coords (get-adjacent-coords (- (gridpt-row gridpt) 1)
+                                               (- (gridpt-col gridpt) 1)
+                                               dir)] ; changed to -1s for neighbors problem
+         [row (car neighbor-coords)]
+         [col (cdr neighbor-coords)])
+    (get-gridpt-by-coords board row col)))
+
+; returns white if the stone adjacent to gridpt in direction dir is white,
+;         black,                                                    black,
+; or      null                                                      null.
+(define (friend-in-dir? gridpt dir)
+  (let ([neighbor (get-neighbor-of-gridpt gridpt dir)])
+    (and (not (null? neighbor))
+         (equal? (gridpt-color neighbor) (gridpt-color gridpt)))))
+
+(define (empty-in-dir? gridpt dir)
+  (let ([neighbor (get-neighbor-of-gridpt gridpt dir)])
+    (and (not (null? neighbor))
+         (not (gridpt-has-stone? neighbor)))))
 
 ; place stone of color color at row, col. If a stone is already at location,
 ; raises error.
@@ -96,7 +99,7 @@
   (set-gridpt-color! gridpt null)
   (set-gridpt-has-stone?! gridpt #f))
 
-(define (get-neighbor board row col dir)
+(define (get-neighbor-by-coords board row col dir)
   (let* ([neighbor-row-col (get-adjacent-coords row col dir)]
          [neighbor-row (car neighbor-row-col)]
          [neighbor-col (cdr neighbor-row-col)])
@@ -119,7 +122,7 @@
 ; row and col are wrong SOMEWHERE. In get-gridpt-by-coords?!
 (define (get-neighbors board row col liberty-directions)
   (cond [(null? liberty-directions) '()]
-        [else (cons (get-neighbor board row col (car liberty-directions))
+        [else (cons (get-neighbor-by-coords board row col (car liberty-directions))
                     (get-neighbors board row col (cdr liberty-directions)))]))
 
 (define (remove-capture-list capture-list)
