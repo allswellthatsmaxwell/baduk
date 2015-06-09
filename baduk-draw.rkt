@@ -93,6 +93,11 @@
       row-list))
    board))
 
+;(define (populate-board gridpts)
+;  (cond [(null? gridpts) '()]
+;        [else (place-stone-by-gridpt (car gridpts))
+;              (populate-board (cdr gridpts))]))
+
 ; reads a game file (in sgf format) from sgf-path and draws that game on the board.
 (define (read-sgf-from-file sgf-path)
   (let* ([gridpts (sgf-file->gridpts sgf-path)]
@@ -165,3 +170,7 @@
 
 (send frame show #t)
 
+; loading a game
+;(define sgf "kgs-19-2015-05-new/2015-05-27-8.sgf")
+
+;(read-sgf-from-file sgf)

@@ -119,6 +119,10 @@
             (set! move-count (+ 1 move-count))
             (set! move-stack (cons targetpt move-stack))])))
 
+; place gridpt on the board
+(define (place-stone-by-gridpt board gridpt)
+  (place-stone board gridpt-row gridpt-col gridpt-color))
+
 ; take gridpt off of whatever board it's on. If no stone exists, does nothing.
 (define (remove-stone gridpt)
   (set-gridpt-color! gridpt null)
