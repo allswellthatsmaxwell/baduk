@@ -52,7 +52,7 @@
       (let ([make-gridpt (λ (row-col-color)
                            (displayln row-col-color)
                            (gridpt (+ (car row-col-color) 1)
-                                   (+ (car (cdr row-col-color) ) 1)
+                                   (+ (car (cdr row-col-color)) 1)
                                    #f
                                    (cddr row-col-color)))])
         (make-gridpt (list-ref triplets i))))))

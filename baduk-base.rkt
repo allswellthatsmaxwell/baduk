@@ -41,8 +41,8 @@
 ; constructs an empty board gridpts, size board-size x board-size. each
 ; component gridpt is initially empty and has color null.
 (define (make-board)
-  (build-list board-size
-              (lambda (row) (build-list board-size
+  (build-list (+ board-size 1)
+              (lambda (row) (build-list (+ board-size 1)
                                    (lambda (col) (gridpt row col #f null))))))
 
 (define board (make-board))
@@ -75,6 +75,7 @@
                                                dir)] ; changed to -1s for neighbors problem
          [row (car neighbor-coords)]
          [col (cdr neighbor-coords)])
+    (displayln "IN GET-NEIGHBOR-OF-GRIDPT")
     (get-gridpt-by-coords board row col)))
 
 ; returns white if the stone adjacent to gridpt in direction dir is white,
@@ -112,6 +113,7 @@
 ; raises error.
 (define (place-stone board row col color)
   (let ([targetpt (get-gridpt-by-coords board row col)])
+    (displayln targetpt) ; debug
     (cond
       [(gridpt-has-stone? targetpt) (error (string-append "there is already a stone at " (~a targetpt)))]
       [else (set-gridpt-color! targetpt color)
@@ -158,6 +160,7 @@
     (help-get-neighbors liberty-directions)))
 
 ; returns a mutable set of stones in the same group as gridpt. This includes gridpt.
+; (A "group" is any collection of adjacent stones of the same color).
 (define (collect-group board gridpt)
   (letrec
       ([group (mutable-set)]
@@ -195,6 +198,9 @@
            [opposite-color-neighbors (filter
                                       (lambda (neighbor) (opponents? gridpt neighbor))
                                       (get-neighbors board row col))]
+           ; checks each adjacent, opposite-color position to gridpt.
+           ; If any adjacent groups are dead, removes them.
+           ; builds up list of removed stones to return.
            [remove-helper
             (lambda (neighbors)
               (cond [(null? neighbors) '()]
