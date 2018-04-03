@@ -115,7 +115,8 @@
   (let ([targetpt (get-gridpt-by-coords board row col)])
     (displayln targetpt) ; debug
     (cond
-      [(gridpt-has-stone? targetpt) (error (string-append "there is already a stone at " (~a targetpt)))]
+      [(gridpt-has-stone? targetpt)
+       (error (string-append "there is already a stone at " (~a targetpt)))]
       [else (set-gridpt-color! targetpt color)
             (set-gridpt-has-stone?! targetpt #t)
             (set! move-count (+ 1 move-count))
@@ -155,7 +156,8 @@
   (letrec ([help-get-neighbors
             (lambda (liberty-directions)
               (cond [(null? liberty-directions) '()]
-                    [else (cons (get-neighbor-by-coords board row col (car liberty-directions))
+                    [else (cons (get-neighbor-by-coords board row col
+                                                        (car liberty-directions))
                                 (help-get-neighbors (cdr liberty-directions)))]))])
     (help-get-neighbors liberty-directions)))
 
